@@ -18,7 +18,6 @@ public class ProductController {
     @Autowired
     private ProductService productService;
 
-    // ✅ 200 OK (por defecto), retorna contenido paginado
     @GetMapping
     public PaginatedResponse<Product> getAll(Pageable pageable) {
         Page<Product> page = productService.findAll(pageable);
@@ -33,14 +32,12 @@ public class ProductController {
         );
     }
 
-    // ✅ Retorna 201 CREATED y el recurso creado
     @PostMapping
     public ResponseEntity<Product> create(@Valid @RequestBody Product product) {
         Product created = productService.create(product);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
-    // ✅ Retorna 200 OK si existe, 404 NOT FOUND si no existe
     @GetMapping("/{id}")
     public ResponseEntity<Product> getById(@PathVariable Long id) {
         return productService.findById(id)
@@ -48,7 +45,6 @@ public class ProductController {
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
     }
 
-    // ✅ Retorna 200 OK si se actualizó, 404 NOT FOUND si no existe
     @PutMapping("/{id}")
     public ResponseEntity<Product> update(@PathVariable Long id, @Valid @RequestBody Product updatedProduct) {
         Product updated = productService.update(id, updatedProduct);
@@ -59,7 +55,6 @@ public class ProductController {
         }
     }
 
-    // ✅ Retorna 204 NO CONTENT al eliminar (aunque no verifiques si existe)
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         productService.delete(id);
