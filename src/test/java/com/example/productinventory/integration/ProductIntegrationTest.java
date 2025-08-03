@@ -2,6 +2,7 @@ package com.example.productinventory.integration;
 
 import com.example.productinventory.model.Product;
 import com.example.productinventory.repository.ProductRepository;
+import com.example.productinventory.dto.ApiResponse;
 import com.example.productinventory.dto.PaginatedResponse;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -15,7 +16,7 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.test.context.TestPropertySource;
 
-import java.util.Arrays;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -45,11 +46,17 @@ public class ProductIntegrationTest {
     void testCreateProduct() {
         Product newProduct = new Product("Producto de prueba", "Descripción", 10.0);
 
-        ResponseEntity<Product> response = restTemplate.postForEntity(baseUrl, newProduct, Product.class);
+        ResponseEntity<ApiResponse<Product>> response = restTemplate.exchange(
+                baseUrl,
+                HttpMethod.POST,
+                new HttpEntity<>(newProduct),
+                new ParameterizedTypeReference<>() {
+                }
+        );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().getId()).isNotNull();
+        assertThat(response.getBody().getData().getId()).isNotNull();
     }
 
     @Test
@@ -70,36 +77,44 @@ public class ProductIntegrationTest {
 
         String url = baseUrl + "?page=0&size=10";
 
-        ResponseEntity<PaginatedResponse<Product>> response = restTemplate.exchange(
+        ResponseEntity<ApiResponse<PaginatedResponse<Product>>> response = restTemplate.exchange(
                 url,
                 HttpMethod.GET,
                 null,
-                new ParameterizedTypeReference<PaginatedResponse<Product>>() {}
+                new ParameterizedTypeReference<>() {
+                }
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        PaginatedResponse<Product> body = response.getBody();
-        assertThat(body).isNotNull();
-        assertThat(body.getData()).hasSize(10);
-        assertThat(body.getMeta().getTotalElements()).isEqualTo(15);
-        assertThat(body.getMeta().getTotalPages()).isEqualTo(2);
-        assertThat(body.getMeta().getPage()).isEqualTo(0);
-        assertThat(body.getMeta().getSize()).isEqualTo(10);
+        PaginatedResponse<Product> paginated = response.getBody().getData();
+        assertThat(paginated.getItems()).hasSize(10);
+        assertThat(paginated.getMeta().getTotalElements()).isEqualTo(15);
+        assertThat(paginated.getMeta().getTotalPages()).isEqualTo(2);
+        assertThat(paginated.getMeta().getPage()).isEqualTo(0);
+        assertThat(paginated.getMeta().getSize()).isEqualTo(10);
     }
 
     @Test
     void testGetProductById() {
         Product saved = productRepository.save(new Product("Individual", "Detalle", 40.0));
-        ResponseEntity<Product> response = restTemplate.getForEntity(baseUrl + "/" + saved.getId(), Product.class);
+
+        ResponseEntity<ApiResponse<Product>> response = restTemplate.exchange(
+                baseUrl + "/" + saved.getId(),
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<>() {
+                }
+        );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody().getName()).isEqualTo("Individual");
+        assertThat(response.getBody().getData().getName()).isEqualTo("Individual");
     }
 
     @Test
     void testGetProductByIdNotFound() {
         ResponseEntity<String> response = restTemplate.getForEntity(baseUrl + "/9999", String.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).contains("Producto con ID 9999 no encontrado");
     }
 
     @Test
@@ -111,10 +126,16 @@ public class ProductIntegrationTest {
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<Product> request = new HttpEntity<>(saved, headers);
 
-        ResponseEntity<Product> response = restTemplate.exchange(baseUrl + "/" + saved.getId(), HttpMethod.PUT, request, Product.class);
+        ResponseEntity<ApiResponse<Product>> response = restTemplate.exchange(
+                baseUrl + "/" + saved.getId(),
+                HttpMethod.PUT,
+                request,
+                new ParameterizedTypeReference<>() {
+                }
+        );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody().getName()).isEqualTo("Actualizado");
+        assertThat(response.getBody().getData().getName()).isEqualTo("Actualizado");
     }
 
     @Test
@@ -128,10 +149,19 @@ public class ProductIntegrationTest {
     @Test
     void testDeleteProduct() {
         Product saved = productRepository.save(new Product("A eliminar", "desc", 99.0));
-        restTemplate.delete(baseUrl + "/" + saved.getId());
 
-        boolean exists = productRepository.existsById(saved.getId());
-        assertThat(exists).isFalse();
+        ResponseEntity<ApiResponse<Void>> response = restTemplate.exchange(
+                baseUrl + "/" + saved.getId(),
+                HttpMethod.DELETE,
+                null,
+                new ParameterizedTypeReference<>() {
+                }
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().getMessage()).isEqualTo("Producto eliminado correctamente");
+        assertThat(response.getBody().getData()).isNull();
+        assertThat(productRepository.existsById(saved.getId())).isFalse();
     }
 
     @Test
@@ -142,6 +172,7 @@ public class ProductIntegrationTest {
                 null,
                 String.class
         );
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).contains("Producto con ID 9999 no encontrado");
     }
 }
