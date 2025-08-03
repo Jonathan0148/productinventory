@@ -27,6 +27,15 @@ public class Product {
     @Column(columnDefinition = "text")
     private String description;
 
+    public Product() {}
+
+    // Constructor personalizado para pruebas
+    public Product(String name, String description, Double price) {
+        this.name = name;
+        this.description = description;
+        this.price = price != null ? BigDecimal.valueOf(price) : null;
+    }
+
     // Getters y Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
