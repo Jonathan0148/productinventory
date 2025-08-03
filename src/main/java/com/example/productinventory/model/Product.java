@@ -2,6 +2,7 @@ package com.example.productinventory.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
+
 import java.math.BigDecimal;
 
 @Entity
@@ -27,7 +28,8 @@ public class Product {
     @Column(columnDefinition = "text")
     private String description;
 
-    public Product() {}
+    public Product() {
+    }
 
     // Constructor personalizado para pruebas
     public Product(String name, String description, Double price) {
@@ -37,15 +39,35 @@ public class Product {
     }
 
     // Getters y Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getId() {
+        return id;
+    }
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public BigDecimal getPrice() { return price; }
-    public void setPrice(BigDecimal price) { this.price = price; }
+    public String getName() {
+        return name;
+    }
 
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public BigDecimal getPrice() {
+        return price;
+    }
+
+    public void setPrice(BigDecimal price) {
+        this.price = price;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
 }

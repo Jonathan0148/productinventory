@@ -1,11 +1,13 @@
 package com.example.productinventory.exception;
 
+import com.example.productinventory.util.ErrorResponseUtils;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -14,15 +16,28 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, String>> handleValidationErrors(MethodArgumentNotValidException ex) {
-        Map<String, String> errors = new HashMap<>();
-
+    public ResponseEntity<Object> handleValidationErrors(MethodArgumentNotValidException ex, HttpServletRequest request) {
+        Map<String, String> validationErrors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach(error -> {
-            String fieldName = ((FieldError) error).getField();
+            String field = ((FieldError) error).getField();
             String message = error.getDefaultMessage();
-            errors.put(fieldName, message);
+            validationErrors.put(field, message);
         });
 
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
+        return ErrorResponseUtils.buildValidationError(
+                HttpStatus.BAD_REQUEST,
+                "Errores de validación",
+                request,
+                validationErrors
+        );
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<Object> handleNotFound(ResourceNotFoundException ex, HttpServletRequest request) {
+        return ErrorResponseUtils.buildError(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage(),
+                request
+        );
     }
 }

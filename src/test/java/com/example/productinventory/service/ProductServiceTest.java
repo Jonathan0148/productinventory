@@ -1,5 +1,6 @@
 package com.example.productinventory.service;
 
+import com.example.productinventory.exception.ResourceNotFoundException;
 import com.example.productinventory.model.Product;
 import com.example.productinventory.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,6 +11,7 @@ import org.springframework.data.domain.*;
 import java.math.BigDecimal;
 import java.util.*;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
@@ -48,13 +50,22 @@ class ProductServiceTest {
     }
 
     @Test
-    void testFindById() {
+    void testFindById_ProductExists() {
         when(productRepository.findById(1L)).thenReturn(Optional.of(sampleProduct));
 
-        Optional<Product> result = productService.findById(1L);
+        Product result = productService.findById(1L);
 
-        assertThat(result).isPresent();
-        assertThat(result.get().getName()).isEqualTo("Test Product");
+        assertThat(result).isNotNull();
+        assertThat(result.getName()).isEqualTo("Test Product");
+    }
+
+    @Test
+    void testFindById_ProductNotFound() {
+        when(productRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> productService.findById(1L))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Producto con ID 1 no encontrado");
     }
 
     @Test
@@ -88,17 +99,28 @@ class ProductServiceTest {
     void testUpdateNotFound() {
         when(productRepository.findById(999L)).thenReturn(Optional.empty());
 
-        Product result = productService.update(999L, sampleProduct);
-
-        assertThat(result).isNull();
+        assertThatThrownBy(() -> productService.update(999L, sampleProduct))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Producto con ID 999 no encontrado");
     }
 
     @Test
     void testDelete() {
-        doNothing().when(productRepository).deleteById(1L);
+        when(productRepository.findById(1L)).thenReturn(Optional.of(sampleProduct));
+        doNothing().when(productRepository).delete(sampleProduct);
 
         productService.delete(1L);
 
-        verify(productRepository, times(1)).deleteById(1L);
+        verify(productRepository).findById(1L);
+        verify(productRepository).delete(sampleProduct);
+    }
+
+    @Test
+    void testDeleteNotFound() {
+        when(productRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> productService.delete(999L))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Producto con ID 999 no encontrado");
     }
 }

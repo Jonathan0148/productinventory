@@ -3,17 +3,16 @@ package com.example.productinventory.dto;
 import java.util.List;
 
 public class PaginatedResponse<T> {
-
-    private List<T> data;
+    private List<T> items;
     private Meta meta;
 
-    public PaginatedResponse(List<T> data, Meta meta) {
-        this.data = data;
+    public PaginatedResponse(List<T> items, Meta meta) {
+        this.items = items;
         this.meta = meta;
     }
 
-    public List<T> getData() {
-        return data;
+    public List<T> getItems() {
+        return items;
     }
 
     public Meta getMeta() {
