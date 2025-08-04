@@ -16,6 +16,8 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.test.context.TestPropertySource;
 
+import org.springframework.beans.factory.annotation.Value;
+
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,10 +38,27 @@ public class ProductIntegrationTest {
 
     private String baseUrl;
 
+    @Value("${api.keys.frontend}")
+    private String apiKey;
+
+    private static final String API_KEY = "pk_f8c1e7c9d7a8411b8a2c3b92fa1d91e5";
+
+
     @BeforeEach
     void setUp() {
         baseUrl = "http://localhost:" + port + "/api/products";
         productRepository.deleteAll();
+    }
+
+    private HttpHeaders buildHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("x-api-key", API_KEY);
+        return headers;
+    }
+
+    private <T> HttpEntity<T> buildRequestWithKey(T body) {
+        return new HttpEntity<>(body, buildHeaders());
     }
 
     @Test
@@ -49,7 +68,7 @@ public class ProductIntegrationTest {
         ResponseEntity<ApiResponse<Product>> response = restTemplate.exchange(
                 baseUrl,
                 HttpMethod.POST,
-                new HttpEntity<>(newProduct),
+                buildRequestWithKey(newProduct),
                 new ParameterizedTypeReference<>() {
                 }
         );
@@ -63,7 +82,12 @@ public class ProductIntegrationTest {
     void testCreateProductWithInvalidInput() {
         Product invalidProduct = new Product("a", "", null);
 
-        ResponseEntity<String> response = restTemplate.postForEntity(baseUrl, invalidProduct, String.class);
+        ResponseEntity<String> response = restTemplate.exchange(
+                baseUrl,
+                HttpMethod.POST,
+                buildRequestWithKey(invalidProduct),
+                String.class
+        );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).contains("El precio es obligatorio", "El nombre debe tener entre 3 y 100 caracteres");
@@ -80,7 +104,7 @@ public class ProductIntegrationTest {
         ResponseEntity<ApiResponse<PaginatedResponse<Product>>> response = restTemplate.exchange(
                 url,
                 HttpMethod.GET,
-                null,
+                new HttpEntity<>(buildHeaders()),
                 new ParameterizedTypeReference<>() {
                 }
         );
@@ -101,7 +125,7 @@ public class ProductIntegrationTest {
         ResponseEntity<ApiResponse<Product>> response = restTemplate.exchange(
                 baseUrl + "/" + saved.getId(),
                 HttpMethod.GET,
-                null,
+                new HttpEntity<>(buildHeaders()),
                 new ParameterizedTypeReference<>() {
                 }
         );
@@ -112,7 +136,12 @@ public class ProductIntegrationTest {
 
     @Test
     void testGetProductByIdNotFound() {
-        ResponseEntity<String> response = restTemplate.getForEntity(baseUrl + "/9999", String.class);
+        ResponseEntity<String> response = restTemplate.exchange(
+                baseUrl + "/9999",
+                HttpMethod.GET,
+                new HttpEntity<>(buildHeaders()),
+                String.class
+        );
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).contains("Producto con ID 9999 no encontrado");
     }
@@ -122,9 +151,7 @@ public class ProductIntegrationTest {
         Product saved = productRepository.save(new Product("Viejo", "desc", 100.0));
         saved.setName("Actualizado");
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<Product> request = new HttpEntity<>(saved, headers);
+        HttpEntity<Product> request = buildRequestWithKey(saved);
 
         ResponseEntity<ApiResponse<Product>> response = restTemplate.exchange(
                 baseUrl + "/" + saved.getId(),
@@ -141,8 +168,14 @@ public class ProductIntegrationTest {
     @Test
     void testUpdateProductNotFound() {
         Product product = new Product("No existe", "desc", 10.0);
-        HttpEntity<Product> request = new HttpEntity<>(product);
-        ResponseEntity<String> response = restTemplate.exchange(baseUrl + "/9999", HttpMethod.PUT, request, String.class);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                baseUrl + "/9999",
+                HttpMethod.PUT,
+                buildRequestWithKey(product),
+                String.class
+        );
+
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
@@ -153,7 +186,7 @@ public class ProductIntegrationTest {
         ResponseEntity<ApiResponse<Void>> response = restTemplate.exchange(
                 baseUrl + "/" + saved.getId(),
                 HttpMethod.DELETE,
-                null,
+                new HttpEntity<>(buildHeaders()),
                 new ParameterizedTypeReference<>() {
                 }
         );
@@ -169,10 +202,43 @@ public class ProductIntegrationTest {
         ResponseEntity<String> response = restTemplate.exchange(
                 baseUrl + "/9999",
                 HttpMethod.DELETE,
-                null,
+                new HttpEntity<>(buildHeaders()),
                 String.class
         );
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).contains("Producto con ID 9999 no encontrado");
+    }
+
+    @Test
+    void testRequestWithInvalidApiKeyShouldFail() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("x-api-key", "clave-invalida-12345");
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                baseUrl,
+                HttpMethod.GET,
+                new HttpEntity<>(headers),
+                String.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).contains("API key inválida");
+    }
+
+    @Test
+    void testRequestWithoutApiKeyShouldFail() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                baseUrl,
+                HttpMethod.GET,
+                new HttpEntity<>(headers),
+                String.class
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).contains("Falta el header X-API-KEY");
     }
 }
