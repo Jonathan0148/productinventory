@@ -24,7 +24,7 @@ public class SwaggerConfig {
                 .components(new Components()
                         .addSecuritySchemes(securitySchemeName,
                                 new SecurityScheme()
-                                        .name("X-API-KEY") // ✅ Esto debe ser el nombre del HEADER, no el valor de la clave
+                                        .name("X-API-KEY")
                                         .type(SecurityScheme.Type.APIKEY)
                                         .in(SecurityScheme.In.HEADER)
                         )
