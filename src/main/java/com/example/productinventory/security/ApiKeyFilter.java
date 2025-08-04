@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 
 @Component
@@ -17,12 +18,29 @@ public class ApiKeyFilter implements Filter {
     @Autowired
     private ApiKeyRegistry apiKeyRegistry;
 
+    // Lista de rutas que NO requieren autenticación
+    private static final List<String> WHITELIST = List.of(
+            "/swagger-ui.html",
+            "/swagger-ui/",
+            "/swagger-ui/index.html",
+            "/v3/api-docs",
+            "/v3/api-docs/",
+            "/v3/api-docs/swagger-config"
+    );
+
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
 
         HttpServletRequest httpReq = (HttpServletRequest) request;
         String path = httpReq.getRequestURI();
+
+        // ✅ Ignorar rutas públicas (Swagger)
+        if (WHITELIST.stream().anyMatch(path::startsWith)) {
+            chain.doFilter(request, response);
+            return;
+        }
+
         String apiKey = httpReq.getHeader(HEADER_NAME);
 
         if (apiKey == null || apiKey.isBlank()) {

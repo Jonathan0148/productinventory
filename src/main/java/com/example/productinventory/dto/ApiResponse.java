@@ -1,8 +1,17 @@
 package com.example.productinventory.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
+@Schema(description = "Respuesta estándar de la API con mensaje, datos y código de estado")
 public class ApiResponse<T> {
+
+    @Schema(description = "Mensaje de estado o información adicional", example = "Operación realizada con éxito")
     private String message;
+
+    @Schema(description = "Datos devueltos por la operación")
     private T data;
+
+    @Schema(description = "Código de estado HTTP de la respuesta", example = "200")
     private int status;
 
     public ApiResponse(String message, T data, int status) {
